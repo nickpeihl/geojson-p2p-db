@@ -1,0 +1,39 @@
+{
+  "name": "geojson-p2p-db",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "budo example/main.js",
+    "test": "tape test/*.js"
+  },
+  "author": "Nick Peihl <nickpeihl@gmail.com> (http://npeihl.com/)",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@mapbox/geojsonhint": "^2.0.1",
+    "drag-drop": "^2.13.2",
+    "flatten": "^1.0.2",
+    "geojsonhint": "^2.0.0",
+    "hyperkv": "^2.0.3",
+    "hyperlog": "^4.12.1",
+    "hyperlog-kdb-index": "^4.0.1",
+    "idb-chunk-store": "^0.1.3",
+    "inherits": "^2.0.3",
+    "kdb-tree-store": "^3.1.0",
+    "level": "^1.6.0",
+    "level-browserify": "^1.1.0",
+    "map-limit": "0.0.1",
+    "memdb": "^1.3.1",
+    "mutexify": "^1.1.0",
+    "once": "^1.4.0",
+    "randombytes": "^2.0.3",
+    "subleveldown": "^2.1.0",
+    "uniq": "^1.0.1",
+    "xtend": "^4.0.1"
+  },
+  "devDependencies": {
+    "fd-chunk-store": "^2.0.0",
+    "@mapbox/geojson-fixtures": "^1.0.0",
+    "memory-chunk-store": "^1.2.0"
+  }
+}
