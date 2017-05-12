@@ -31,7 +31,6 @@
     "@mapbox/geojson-fixtures": "^1.0.0",
     "@turf/helpers": "^4.2.0",
     "fd-chunk-store": "^2.0.0",
-    "leaflet-draw": "^0.4.9",
     "mapbox-gl": "^0.37.0",
     "memory-chunk-store": "^1.2.0"
   }

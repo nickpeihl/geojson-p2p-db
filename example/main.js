@@ -7,7 +7,6 @@ var randomBytes = require('randombytes')
 var sampleFeatures = require('./sample.json')
 var turf = require('@turf/helpers')
 var sublevel = require('subleveldown')
-require('leaflet-draw')
 
 var map = L.map('map', {
   center: [48.5, -123.0],
