@@ -7,10 +7,10 @@ var inherits = require('inherits')
 var lock = require('mutexify')
 var once = require('once')
 var randomBytes = require('randombytes')
-var flatten = require('flatten')
 var xtend = require('xtend')
 var uniq = require('uniq')
 var mapLimit = require('map-limit')
+var geojsonCoords = require('@mapbox/geojson-coords')
 
 module.exports = DB
 
@@ -297,53 +297,8 @@ function mapKdb (row, next) {
   if (!row.value) return null
   var v = row.value.v
   if (v && v.type) {
-    next(null, { type: 'put', points: geomToCoords(v) })
+    next(null, { type: 'put', points: geojsonCoords(v) })
   } else next()
-}
-
-function geomToCoords (v) {
-  var points = []
-  switch (v.type) {
-      // TODO Maybe we should force seperation of features
-      // and geometries from FeatureCollections and
-      // GeometryCollections
-    case 'FeatureCollection':
-      points = flatten(v.features.map(function (f) {
-        return geomToCoords(f.geometry)
-      }), 1)
-      break
-    case 'GeometryCollection':
-      points = flatten(v.geometries.map(function (f) {
-        return geomToCoords(f)
-      }), 1)
-      break
-    case 'Feature':
-      points = geomToCoords(v.geometry).map(ptf)
-      break
-    case 'Point':
-      if (v.coordinates && Array.isArray(v.coordinates)) {
-        points = ptf(v.coordinates)
-      }
-      break
-    case 'MultiPoint':
-    case 'LineString':
-      if (v.coordinates && Array.isArray(v.coordinates)) {
-        points = flatten(v.coordinates, 0).map(ptf)
-      }
-      break
-    case 'MultiLineString':
-    case 'Polygon':
-      if (v.coordinates && Array.isArray(v.coordinates)) {
-        points = flatten(v.coordinates, 1).map(ptf)
-      }
-      break
-    case 'MultiPolygon':
-      if (v.coordinates && Array.isArray(v.coordinates)) {
-        points = flatten(v.coordinates, 2).map(ptf)
-      }
-      break
-  }
-  return points
 }
 
 function noop () {}
@@ -353,10 +308,6 @@ function mapObj (obj, fn) {
     obj[key] = fn(key, obj[key])
   })
   return obj
-}
-
-function ptf (x) {
-  return [ Number(x[1]), Number(x[0]) ]
 }
 
 function kdbPointToVersion (pt) {
