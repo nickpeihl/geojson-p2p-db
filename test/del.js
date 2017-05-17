@@ -4,22 +4,25 @@ var fdstore = require('fd-chunk-store')
 var path = require('path')
 var memdb = require('memdb')
 var collect = require('collect-stream')
-var fixtures = require('./fixtures')
 var xtend = require('xtend')
+var fixtures = require('./fixtures')
 
 var tmpdir = require('os').tmpdir()
 var storefile = path.join(tmpdir, 'osm-store-' + Math.random())
 
 var osmdb = require('../')
 
-test('create all geojson geometry types', function (t) {
-  t.plan(22)
+test('del', function (t) {
+  t.plan(24)
   var osm = osmdb({
     log: hyperlog(memdb(), { valueEncoding: 'json' }),
     db: memdb(),
     store: fdstore(4096, storefile)
   })
-  var docs = fixtures
+  var docs = xtend(fixtures, {
+    'z-multipolygon': { d: 'multipolygon' },
+    'z-point': { d: 'point' }
+  })
   var names = {}
   var nodes = {}
   var versions = {}
@@ -29,22 +32,40 @@ test('create all geojson geometry types', function (t) {
     if (keys.length === 0) return ready()
     var key = keys.shift()
     var doc = docs[key]
-    osm.create(doc, function (err, k, node) {
-      t.ifError(err)
-      names[key] = k
-      versions[key] = node.key
-      nodes[k] = node
-      next()
-    })
+    if (doc.d) {
+      osm.del(names[doc.d], function (err, node) {
+        t.ifError(err)
+        versions[key] = node.key
+        nodes[doc.d] = node
+        next()
+      })
+    } else {
+      osm.create(doc, function (err, k, node) {
+        t.ifError(err)
+        names[key] = k
+        versions[key] = node.key
+        nodes[k] = node
+        next()
+      })
+    }
   })()
 
   function ready () {
     var q0 = [[-1.0, 2.0], [99.0, 102.0]]
     var ex0 = Object.keys(fixtures).map(function (key) {
-      var doc = xtend(fixtures[key], {
-        id: names[key],
-        version: versions[key]
-      })
+      var doc
+      if (key === 'point' || key === 'multipolygon') {
+        doc = {
+          deleted: true,
+          id: names[key],
+          version: versions['z-' + key]
+        }
+      } else {
+        doc = xtend(fixtures[key], {
+          id: names[key],
+          version: versions[key]
+        })
+      }
       return doc
     }).sort(idcmp)
     osm.query(q0, function (err, res) {
@@ -59,10 +80,19 @@ test('create all geojson geometry types', function (t) {
     var ex1 = Object.keys(fixtures).filter(function (key) {
       return key !== 'point' && key !== 'point-xyz'
     }).map(function (key) {
-      var doc = xtend(fixtures[key], {
-        id: names[key],
-        version: versions[key]
-      })
+      var doc
+      if (key === 'point' || key === 'multipolygon') {
+        doc = {
+          deleted: true,
+          id: names[key],
+          version: versions['z-' + key]
+        }
+      } else {
+        doc = xtend(fixtures[key], {
+          id: names[key],
+          version: versions[key]
+        })
+      }
       return doc
     }).sort(idcmp)
     osm.query(q1, function (err, res) {
