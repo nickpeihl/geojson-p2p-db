@@ -19,6 +19,26 @@ module.exports = DB
 
 inherits(DB, EventEmitter)
 
+/**
+ * Create a new geojson-p2p database
+ * @param {Object} opts
+ * @param {string} opts.log a hyperlog with a valueEncoding of `json`
+ * @param {string} opts.db a levelup instace to store index data
+ * @param {string} opts.store an abstract-chunk-store instance
+ * @param {string} [opts.kv='kv'] an optional hyperkv instance,
+ * if not specified, one will be created
+ * @example
+ * var hyperlog = require('hyperlog')
+ * var level = require('level')
+ * var fdstore = require('fd-chunk-store')
+ * var gjdb = require('geojson-p2p-db')
+ *
+ * var gj = gjdb({
+ *   log: hyperlog(level('log'), { valueEncoding: 'json' }),
+ *   db: level('index'),
+ *   store: fdstore(4096, '/tmp/geojson-p2p/kdb')
+ * })
+ */
 function DB (opts) {
   var self = this
   if (!(self instanceof DB)) return new DB(opts)
@@ -80,6 +100,42 @@ DB.prototype.ready = function (cb) {
   function ready () { if (--pending <= 0) cb() }
 }
 
+/**
+ * Store a new geojson feature or changeset from `doc`. `cb(err, id, node)`
+ * is returned with the generated `id` and the `node` from the underlying
+ * hyperlog.
+ * @param {Object} value A GeoJSON Feature object containing `geometry`,
+ * `properties` and `changeset` properties _or_ a changeset object with a
+ * `type='changeset'` and `tags` properties. `tags.comment` is recommended for
+ * storing text describing the changeset.  *Note:* The GeoJSON specification
+ * allows an `id` property on Feature objects. This property will be added or
+ * destructively overwritten in the geojson-p2p-db to ensure uniqueness.
+ * @param {Object} [opts={}] Options to pass to hyperkv.
+ * @param {Function} cb A callback function with the parameters `err`, `id`,
+ * `node` where `id` is the generated id and the `node` from the underlying
+ * hyperlog.
+ * @example
+ * gj.create({ type: 'changeset', tags: { comment: 'This is a new changeset' }},
+ * function (err, id, node) {
+ *   if (err) throw err
+ *   var feat = {
+ *     type: "Feature",
+ *     properties: {
+ *       beep: 'boop'
+ *     },
+ *     geometry: {
+ *       type: 'Point',
+ *       coordinates: [-123.027648, 48.695492]
+ *     },
+ *     changeset: id
+ *   }
+ *   gj.create(feat, function (err, id, node) {
+ *     if (err) console.error(err)
+ *     console.log('Id', id)
+ *     console.log('Node', node)
+ *   })
+ * })
+ */
 DB.prototype.create = function (value, opts, cb) {
   var self = this
   if (typeof opts === 'function') {
@@ -95,6 +151,49 @@ DB.prototype.create = function (value, opts, cb) {
   })
 }
 
+/**
+ * Replace a document `key` from `value`. The document will be created if it does
+ *  not exist. `cb(err, node)` is returned with the `node` from the underlying
+ * hyperlog.
+ * @param {string} key Id of a document to replace with `doc`.
+ * @param {Object} value A GeoJSON Feature object containing `geometry`,
+ * `properties` and `changeset` properties _or_ a changeset object with a
+ * `type='changeset'` and `tags` properties. `tags.comment` is recommended for
+ * storing text describing the changeset.  *Note:* The GeoJSON specification
+ * allows an `id` property on Feature objects. This property will be added or
+ * destructively overwritten in the geojson-p2p-db to ensure uniqueness.
+ * @param {Object} [opts={}] Options to pass to hyperkv.
+ * @param {Function} cb A callback function with the parameters `err`, `node`
+ * with the `node` from the underlying hyperlog.
+ * @example
+ * gj.create({ type: 'changeset', tags: { comment: 'This is a new changeset' }},
+ * function (err, id, node) {
+ *   if (err) throw err
+ *   var feat = {
+ *     type: "Feature",
+ *     properties: {
+ *       beep: 'boop'
+ *     },
+ *     geometry: {
+ *       type: 'Point',
+ *       coordinates: [-123.027648, 48.695492]
+ *     },
+ *     changeset: id
+ *   }
+ *   gj.create(feat, function (err, id, node) {
+ *     if (err) console.error(err)
+ *     console.log('Id', id)
+ *     console.log('Node', node)
+ *     feat.properties = {
+ *       boop: 'beep'
+ *     }
+ *     feat.changeset = id
+ *     gj.put(id, feat, function (err, node) {
+ *       console.log('New node', node)
+ *     })
+ *   })
+ * })
+ */
 DB.prototype.put = function (key, value, opts, cb) {
   var self = this
   if (typeof opts === 'function') {
@@ -110,6 +209,14 @@ DB.prototype.put = function (key, value, opts, cb) {
   })
 }
 
+/**
+ * Mark the document at `key` as deleted. `cb(err, node)` is returned with the
+ * `node` from the underlying hyperlog.
+ * @param {string} key Id of the document to mark as deleted.
+ * @param {Object} [opts={}] Options to pass to hyperkv.
+ * @param {Function} cb A callback function with the parameters `err`, `node`
+ * with the `node` from the underlying hyperlog.
+ */
 DB.prototype.del = function (key, opts, cb) {
   var self = this
   if (typeof opts === 'function') {
@@ -193,8 +300,28 @@ DB.prototype._getDocumentDeletionBatchOps = function (id, opts, cb) {
   }
 }
 
+/**
+ * Atomically put or delete an array of documents as `rows`
+ * @param {Object[]} rows Array of `row` to put or delete.
+ * @param {string} rows[].type Type of transaction. Either `'put'` or `'del'`.
+ * @param {string} rows[].key The id of the document to transact.
+ * @param {string[]} rows[].links An array of links to ancestor ids.
+ * @param {Object} rows[].value For `put`, the document to store.
+ * @param {Object} [opts={}] Options to pass to hyperkv
+ * @param {Function} cb A callback function with the parameters `err`, `nodes`
+ * with the `nodes` from the underlying hyperlog.
+ * @example
+ * // With existing changeset id of 'A'
+ * var rows = [
+ *   { type: 'put', value: { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [-122.85, 48.52] }, changeset: 'A' } },
+ *   { type: 'put', value: { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [-122.90, 48.60] }, changeset: 'A' } }
+ * ]
+ * gj.batch(rows, function (err, nodes) {
+ * if (err) throw err
+ * console.log(nodes)
+ * })
+ */
 DB.prototype.batch = function (rows, opts, cb) {
-  // cb(new Error('Not implemented yet'))
   var self = this
   if (typeof opts === 'function') {
     cb = opts
@@ -214,8 +341,8 @@ DB.prototype.batch = function (rows, opts, cb) {
     var pending = 1 + rows.length
     rows.forEach(function (row) {
       var key = row.key
-          ? row.key
-          : row.id
+        ? row.key
+        : row.id
       if (!key) {
         key = row.key = randomBytes(8).toString('hex')
       }
@@ -245,6 +372,39 @@ DB.prototype.batch = function (rows, opts, cb) {
   })
 }
 
+/**
+ * Get the documents with the id `key`.
+ * @param {string} key The id of the documents to retrieve.
+ * @param {Object} [opts={}] Options to pass to hyperkv.
+ * @param {Function} cb A callback function with the parameters `err`, `docs`
+ * where `docs` is an object mapping hyperlog hashes to current document values.
+ * If a document has been deleted, it will only have the properties
+ * `{ id: <id>, version: <version>, deleted: true }`.
+ * @example
+ * gj.create({ type: 'changeset', tags: { comment: 'This is a new changeset' } },
+ *           function (err, id, node) {
+ *             if (err) throw err
+ *             var feat = {
+ *               type: "Feature",
+ *               properties: {
+ *                 beep: 'boop'
+ *               },
+ *               geometry: {
+ *                 type: 'Point',
+ *                 coordinates: [-123.027648, 48.695492]
+ *               },
+ *               changeset: id
+ *             }
+ *             gj.create(feat, function (err, id, node) {
+ *               if (err) console.error(err)
+ *               console.log('Id', id)
+ *               gj.get(id, function (err, nodes) {
+ *                 if (err) throw err
+ *                 console.log('Nodes', nodes)
+ *               })
+ *             })
+ *           })
+*/
 DB.prototype.get = function (key, opts, cb) {
   if (typeof opts === 'function') {
     cb = opts
@@ -266,7 +426,32 @@ DB.prototype.get = function (key, opts, cb) {
     cb(null, docs)
   })
 }
-
+/**
+ * Query the database using latitude/longitude bounds.
+ * @param {Array<Array<Number>>} q An array of `[[ minLat, maxLat], [minLng, maxLng]]`
+ * coordinate pairs to specify a bounding box.
+ * @param {Object} [opts={}] Options to pass to kdb-tree-store query.
+ * @param {Function} cb A callback function with the parameters `err, res`
+ * where `res` is an array of documents each containing an `id` property and a
+ * `version` property which is the hash key from the underlying hyperlog.
+ * Deleted documents will only have the properties
+ * `{ id: <id>, version: <version>, deleted: true }`.
+ * @example
+ * // With existing changeset id of 'A'
+ * var rows = [
+ *   { type: 'put', value: { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [-122.85, 48.52] }, changeset: 'A' } },
+ *   { type: 'put', value: { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [-122.90, 48.70] }, changeset: 'A' } }
+ * ]
+ *
+ * gj.batch(rows, function (err, nodes) {
+ *   if (err) throw err
+ *   console.log('Created', nodes)
+ *   gj.query([ [ 48.50, 48.60 ], [ -122.89, -122.80 ] ], function (err, res) {
+ *     if (err) throw err
+ *     console.log('Results', res)
+ *   })
+ * })
+*/
 DB.prototype.query = function (q, opts, cb) {
   var self = this
   if (typeof opts === 'function') {
@@ -377,6 +562,13 @@ DB.prototype._collectFeatures = function (version, seenAccum, cb) {
   }
 }
 
+/**
+ * Return a readable object stream of query results contained in the
+ * query `q`.
+ * @param {Array<Array<Number>>} q An array of `[[ minLat, maxLat], [minLng, maxLng]]`
+ * coordinate pairs to specify a bounding box.
+ * @param {Object} [opts={}] Options to pass to kdb-tree-store query.
+*/
 DB.prototype.queryStream = function (q, opts) {
   var self = this
   if (!opts) opts = {}
@@ -401,6 +593,28 @@ DB.prototype.queryStream = function (q, opts) {
   }
 }
 
+/**
+ * Get a list of document version ids in a changeset by the changeset id `key`
+ * @param {string} key Id of changeset.
+ * @param {Function} [cb] An optional callback function with the parameters
+ * `err`, `versions` where `versions` is an array of changeset ids. If no
+ * callback is specified, a readable object stream is returned.
+ * @example
+ * gj.create({ type: 'changeset', tags: { comment: 'This is a new changeset' }},
+ *           function (err, changesetId, node) {
+ *             if (err) throw err
+ *             var rows = [
+ *               { type: 'put', value: { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [-122.85, 48.52] }, changeset: changesetId } },
+ *               { type: 'put', value: { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [-122.90, 48.60] }, changeset: changesetId } }
+ *             ]
+ *             gj.batch(rows, function (err, nodes) {
+ *               if (err) throw err
+ *               gj.getChanges(changesetId, function (err, nodes) {
+ *                 if (err) throw err
+ *                 console.log(nodes)
+ *               })
+ *             })
+*/
 DB.prototype.getChanges = function (key, opts, cb) {
   if (typeof opts === 'function') {
     cb = opts
