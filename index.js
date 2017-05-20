@@ -216,7 +216,35 @@ DB.prototype.put = function (key, value, opts, cb) {
  * @param {Object} [opts={}] Options to pass to hyperkv.
  * @param {Function} cb A callback function with the parameters `err`, `node`
  * with the `node` from the underlying hyperlog.
- */
+ * @example
+ * gj.create({ type: 'changeset', tags: { comment: 'This is a new changeset' }},
+ *           function (err, id, node) {
+ *             if (err) throw err
+ *             var feat = {
+ *               type: "Feature",
+ *               properties: {
+ *                 beep: 'boop'
+ *               },
+ *               geometry: {
+ *                 type: 'Point',
+ *                 coordinates: [-123.027648, 48.695492]
+ *               },
+ *               changeset: id
+ *             }
+ *             gj.create(feat, function (err, id, node) {
+ *               if (err) console.error(err)
+ *               console.log('Id', id)
+ *               console.log('Node', node)
+ *               gj.del(id, function (err, node) {
+ *                 if (err) throw err
+ *                 gj.get(id, function (err, node) {
+ *                   if (err) throw err
+ *                   console.log('Deleted', node)
+ *                 })
+ *               })
+ *             })
+ *           })
+*/
 DB.prototype.del = function (key, opts, cb) {
   var self = this
   if (typeof opts === 'function') {
