@@ -642,6 +642,7 @@ DB.prototype.queryStream = function (q, opts) {
  *                 console.log(nodes)
  *               })
  *             })
+ *           })
 */
 DB.prototype.getChanges = function (key, opts, cb) {
   if (typeof opts === 'function') {
