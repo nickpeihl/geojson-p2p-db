@@ -1,5 +1,7 @@
 # geojson-p2p-db
 
+[![Build Status](https://travis-ci.org/nickpeihl/geojson-p2p-db.svg?branch=master)](https://travis-ci.org/nickpeihl/geojson-p2p-db)
+
 A p2p database for geojson map data (based on [osm-p2p-db](https://github.com/digidem/osm-p2p-db))
 
 geojson-p2p-db shares a lot of the same features as osm-p2p-db, including replication, forking, append-only logs, and changesets. But geojson-p2p-db differs from osm-p2p-db in several ways.
