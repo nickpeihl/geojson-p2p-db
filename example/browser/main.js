@@ -33,7 +33,7 @@ map.addControl(new L.Control.Draw({
 
 var db = level('gjdb')
 
-var gjdb = require('../')
+var gjdb = require('../../')
 window.gj = gjdb({
   log: hyperlog(sublevel(db, 'log'), { valueEncoding: 'json' }),
   db: sublevel(db, 'index'),
