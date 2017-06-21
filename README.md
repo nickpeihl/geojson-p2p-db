@@ -111,7 +111,7 @@ var gj = gjdb({
 
 #### create
 
-Store a new geojson feature or changeset from `doc`. `cb(err, id, node)`
+Store a new geojson feature or changeset from `value`. `cb(err, id, node)`
 is returned with the generated `id` and the `node` from the underlying
 hyperlog.
 
@@ -161,7 +161,7 @@ hyperlog.
 
 **Parameters**
 
--   `key` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Id of a document to replace with `doc`.
+-   `key` **[string](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String)** Id of a document to replace with `value`.
 -   `value` **[Object](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object)** A GeoJSON Feature object containing `geometry`,
     `properties` and `changeset` properties _or_ a changeset object with a
     `type='changeset'` and `tags` properties. `tags.comment` is recommended for
@@ -396,6 +396,7 @@ gj.create({ type: 'changeset', tags: { comment: 'This is a new changeset' }},
 ```
 
 ## License
+
    Copyright 2017 Nick Peihl
 
    Licensed under the Apache License, Version 2.0 (the "License");
