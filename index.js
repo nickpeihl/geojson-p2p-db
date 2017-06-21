@@ -101,7 +101,7 @@ DB.prototype.ready = function (cb) {
 }
 
 /**
- * Store a new geojson feature or changeset from `doc`. `cb(err, id, node)`
+ * Store a new geojson feature or changeset from `value`. `cb(err, id, node)`
  * is returned with the generated `id` and the `node` from the underlying
  * hyperlog.
  * @param {Object} value A GeoJSON Feature object containing `geometry`,
@@ -155,7 +155,7 @@ DB.prototype.create = function (value, opts, cb) {
  * Replace a document `key` from `value`. The document will be created if it does
  *  not exist. `cb(err, node)` is returned with the `node` from the underlying
  * hyperlog.
- * @param {string} key Id of a document to replace with `doc`.
+ * @param {string} key Id of a document to replace with `value`.
  * @param {Object} value A GeoJSON Feature object containing `geometry`,
  * `properties` and `changeset` properties _or_ a changeset object with a
  * `type='changeset'` and `tags` properties. `tags.comment` is recommended for
